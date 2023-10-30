@@ -7,12 +7,9 @@
 
 package com.obs.marveleditor.fragments
 
-import android.content.Context
 import android.os.Bundle
 import android.os.Environment
-import android.support.design.widget.BottomSheetDialogFragment
-import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
+
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -20,6 +17,9 @@ import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.obs.marveleditor.utils.OptiConstant
 import com.obs.marveleditor.OptiVideoEditor
 import com.obs.marveleditor.R
@@ -45,7 +45,6 @@ class OptiAddTextFragment : BottomSheetDialogFragment(), OptiPositionListener, O
     private var selectedPositionItem: String? = null
     private var etText: EditText? = null
     private var positionStr: String? = null
-    private var mContext: Context? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         rootView = inflater.inflate(R.layout.opti_fragment_add_text, container, false)
@@ -59,12 +58,10 @@ class OptiAddTextFragment : BottomSheetDialogFragment(), OptiPositionListener, O
         ivClose = rootView.findViewById(R.id.iv_close)
         ivDone = rootView.findViewById(R.id.iv_done)
         etText = rootView.findViewById(R.id.etText)
-        linearLayoutManager = LinearLayoutManager(activity!!.applicationContext)
+        linearLayoutManager = LinearLayoutManager(requireContext())
 
         linearLayoutManager.orientation = LinearLayoutManager.HORIZONTAL
         rvPosition.layoutManager = linearLayoutManager
-
-        mContext = context
 
         ivClose.setOnClickListener {
             dismiss()
@@ -109,7 +106,7 @@ class OptiAddTextFragment : BottomSheetDialogFragment(), OptiPositionListener, O
                     }
 
                     //output file is generated and send to video processing
-                    val outputFile = OptiUtils.createVideoFile(context!!)
+                    val outputFile = OptiUtils.createVideoFile(requireContext())
                     Log.v(tagName, "outputFile: ${outputFile.absolutePath}")
 
                     //get font file
@@ -119,7 +116,7 @@ class OptiAddTextFragment : BottomSheetDialogFragment(), OptiPositionListener, O
                     )
                     Log.v(tagName, "fontPath: ${fontFile.absolutePath}")
 
-                    OptiVideoEditor.with(context!!)
+                    OptiVideoEditor.with(requireContext()!!)
                         .setType(OptiConstant.VIDEO_TEXT_OVERLAY)
                         .setFile(videoFile!!)
                         .setOutputPath(outputFile.path)
@@ -134,10 +131,10 @@ class OptiAddTextFragment : BottomSheetDialogFragment(), OptiPositionListener, O
 
                     helper?.showLoading(true)
                 } else {
-                    OptiUtils.showGlideToast(activity!!, getString(R.string.error_add_text_pos))
+                    OptiUtils.showGlideToast(requireActivity(), getString(R.string.error_add_text_pos))
                 }
             } else {
-                OptiUtils.showGlideToast(activity!!, getString(R.string.error_add_text))
+                OptiUtils.showGlideToast(requireActivity(), getString(R.string.error_add_text))
             }
         }
 
@@ -148,7 +145,7 @@ class OptiAddTextFragment : BottomSheetDialogFragment(), OptiPositionListener, O
         positionList.add(OptiConstant.TOP_LEFT)
         positionList.add(OptiConstant.TOP_RIGHT)
 
-        optiPositionAdapter = OptiPositionAdapter(positionList, activity!!.applicationContext, this)
+        optiPositionAdapter = OptiPositionAdapter(positionList, requireContext(), this)
         rvPosition.adapter = optiPositionAdapter
         optiPositionAdapter.notifyDataSetChanged()
     }
@@ -177,7 +174,7 @@ class OptiAddTextFragment : BottomSheetDialogFragment(), OptiPositionListener, O
 
     override fun onFailure(error: Exception) {
         Log.v(tagName, "onFailure() ${error.localizedMessage}")
-        Toast.makeText(mContext, "Video processing failed", Toast.LENGTH_LONG).show()
+        Toast.makeText(requireContext(), "Video processing failed", Toast.LENGTH_LONG).show()
         helper?.showLoading(false)
     }
 

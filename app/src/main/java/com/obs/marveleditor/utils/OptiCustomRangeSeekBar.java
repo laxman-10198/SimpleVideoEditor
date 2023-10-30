@@ -25,11 +25,13 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.support.annotation.NonNull;
-import android.support.v4.content.ContextCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+
+import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+
 import com.obs.marveleditor.R;
 import com.obs.marveleditor.interfaces.OptiOnRangeSeekBarChangeListener;
 
@@ -69,7 +71,7 @@ public class OptiCustomRangeSeekBar extends View {
         mThumbHeight = OptiBarThumb.Companion.getHeightBitmap(mBarThumbs);
 
         mScaleRangeMax = 100;
-        mHeightTimeLine = getContext().getResources().getDimensionPixelOffset(R.dimen._60sdp);
+        mHeightTimeLine = getContext().getResources().getDimensionPixelOffset(com.intuit.sdp.R.dimen._60sdp);
 
         setFocusable(true);
         setFocusableInTouchMode(true);

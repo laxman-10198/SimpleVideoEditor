@@ -1,8 +1,23 @@
-/*
- *
- *  Created by Optisol on Aug 2019.
- *  Copyright © 2019 Optisol Business Solutions pvt ltd. All rights reserved.
- *
- */
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+        maven { url 'https://jitpack.io' }
 
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        jcenter()
+        repositories {
+            maven { url 'https://jitpack.io' }
+
+        }
+    }
+}
+rootProject.name = "OptiVideoEditor-for-android"
 include ':app'

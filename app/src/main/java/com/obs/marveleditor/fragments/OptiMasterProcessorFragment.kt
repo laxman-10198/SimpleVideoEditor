@@ -23,39 +23,33 @@ import android.os.Environment
 import android.os.Handler
 import android.provider.MediaStore
 import android.provider.Settings
-import android.support.design.widget.BottomSheetDialogFragment
-import android.support.v4.app.ActivityCompat
-import android.support.v4.app.Fragment
-import android.support.v4.content.ContextCompat
-import android.support.v4.content.FileProvider
-import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.github.hiteshsondhi88.libffmpeg.FFmpeg
 import com.github.hiteshsondhi88.libffmpeg.FFmpegLoadBinaryResponseHandler
 import com.github.hiteshsondhi88.libffmpeg.exceptions.FFmpegNotSupportedException
 import com.google.android.exoplayer2.*
-import com.google.android.exoplayer2.source.TrackGroupArray
+import com.google.android.exoplayer2.Player.Listener
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.util.Util
-import com.obs.marveleditor.OptiVideoEditor
-import com.obs.marveleditor.utils.OptiCommonMethods
-import com.obs.marveleditor.utils.OptiConstant
-import com.obs.marveleditor.R
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.obs.marveleditor.OptiTrimmerActivity
-import com.obs.marveleditor.utils.OptiSessionManager
+import com.obs.marveleditor.OptiVideoEditor
+import com.obs.marveleditor.R
 import com.obs.marveleditor.adapter.OptiVideoOptionsAdapter
 import com.obs.marveleditor.interfaces.OptiFFMpegCallback
 import com.obs.marveleditor.interfaces.OptiVideoOptionListener
-import com.obs.marveleditor.utils.OptiUtils
-import com.obs.marveleditor.utils.VideoUtils
-import com.obs.marveleditor.utils.VideoFrom
+import com.obs.marveleditor.utils.*
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -107,10 +101,10 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
         tvVideoProcessing = rootView.findViewById(R.id.tvVideoProcessing)
         tvInfo = rootView.findViewById(R.id.tvInfo)
 
-        preferences = activity!!.getSharedPreferences("fetch_permission", Context.MODE_PRIVATE)
+        preferences =requireActivity().getSharedPreferences("fetch_permission", Context.MODE_PRIVATE)
 
         rvVideoOptions = rootView.findViewById(R.id.rvVideoOptions)!!
-        linearLayoutManager = LinearLayoutManager(activity!!.applicationContext)
+        linearLayoutManager = LinearLayoutManager(requireContext())
         linearLayoutManager.orientation = LinearLayoutManager.HORIZONTAL
         rvVideoOptions.layoutManager = linearLayoutManager
 
@@ -127,7 +121,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
         //videoOptions.add(OptiConstant.TRANSITION)
 
         optiVideoOptionsAdapter =
-            OptiVideoOptionsAdapter(videoOptions, activity!!.applicationContext, this, orientationLand)
+            OptiVideoOptionsAdapter(videoOptions, requireContext(), this, orientationLand)
         rvVideoOptions.adapter = optiVideoOptionsAdapter
         optiVideoOptionsAdapter.notifyDataSetChanged()
 
@@ -167,7 +161,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
         }
 
         tvSave?.setOnClickListener {
-            AlertDialog.Builder(context!!)
+            AlertDialog.Builder(requireContext())
                 .setTitle(OptiConstant.APP_NAME)
                 .setMessage(getString(R.string.save_video))
                 .setPositiveButton(getString(R.string.Continue)) { dialog, which ->
@@ -175,7 +169,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                         val outputFile = createSaveVideoFile()
                         OptiCommonMethods.copyFile(masterVideoFile, outputFile)
                         Toast.makeText(context, R.string.successfully_saved, Toast.LENGTH_SHORT).show()
-                        OptiUtils.refreshGallery(outputFile.absolutePath, context!!)
+                        OptiUtils.refreshGallery(outputFile.absolutePath, requireContext())
                         tvSave!!.visibility = View.GONE
                     }
                 }
@@ -186,11 +180,11 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
         tvInfo?.setOnClickListener{
             OptiVideoOptionFragment.newInstance().apply {
                 setHelper(this@OptiMasterProcessorFragment)
-            }.show(fragmentManager, "OptiVideoOptionFragment")
+            }.show(childFragmentManager, "OptiVideoOptionFragment")
         }
     }
 
-    override fun onConfigurationChanged(newConfig: Configuration?) {
+    override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         //for playing video in landscape mode
         if (newConfig!!.orientation == Configuration.ORIENTATION_LANDSCAPE) {
@@ -201,10 +195,12 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
             orientationLand = false
         }
         optiVideoOptionsAdapter =
-            OptiVideoOptionsAdapter(videoOptions, activity!!.applicationContext, this, orientationLand)
+            OptiVideoOptionsAdapter(videoOptions, requireContext(), this, orientationLand)
         rvVideoOptions.adapter = optiVideoOptionsAdapter
         optiVideoOptionsAdapter.notifyDataSetChanged()
+
     }
+
 
     override fun onAudioFileProcessed(convertedAudioFile: File) {
 
@@ -280,10 +276,10 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
             }
         } else {
             val cameraIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
-            videoFile = OptiUtils.createVideoFile(context!!)
+            videoFile = OptiUtils.createVideoFile(requireContext())
             Log.v(tagName, "videoPath1: " + videoFile!!.absolutePath)
             videoUri = FileProvider.getUriForFile(
-                context!!,
+                requireContext(),
                 "com.obs.marveleditor.provider", videoFile!!
             )
             cameraIntent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 240) //4 minutes
@@ -310,110 +306,109 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
     private fun itemStorageAction() {
         val sessionManager = OptiSessionManager()
 
-        if (sessionManager.isFirstTime(activity!!)) {
+        if (sessionManager.isFirstTime(requireActivity())) {
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_1,
-                "sticker_1",
-                context!!
+                "sticker_1", requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_2,
                 "sticker_2",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_3,
                 "sticker_3",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_4,
                 "sticker_4",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_5,
                 "sticker_5",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_6,
                 "sticker_6",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_7,
                 "sticker_7",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_8,
                 "sticker_8",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_9,
                 "sticker_9",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_10,
                 "sticker_10",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_11,
                 "sticker_11",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_12,
                 "sticker_12",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_13,
                 "sticker_13",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_14,
                 "sticker_14",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_15,
                 "sticker_15",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_16,
                 "sticker_16",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_17,
                 "sticker_17",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_18,
                 "sticker_18",
-                context!!
+                requireContext()
             )
             OptiUtils.copyFileToInternalStorage(
                 R.drawable.sticker_19,
                 "sticker_19",
-                context!!
+                requireContext()
             )
 
             OptiUtils.copyFontToInternalStorage(
                 R.font.roboto_black,
                 "roboto_black",
-                context!!
+                requireContext()
             )
 
-            sessionManager.setFirstTime(activity!!, false)
+            sessionManager.setFirstTime(requireActivity(), false)
         }
     }
 
@@ -467,7 +462,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                     if (resultCode == RESULT_OK) {
                         masterVideoFile = OptiCommonMethods.writeIntoFile(activity, data, videoFile)
 
-                        val timeInMillis = OptiUtils.getVideoDuration(context!!, masterVideoFile!!)
+                        val timeInMillis = OptiUtils.getVideoDuration(requireContext(), masterVideoFile!!)
                         Log.v(tagName, "timeInMillis: $timeInMillis")
                         val duration = OptiCommonMethods.convertDurationInMin(timeInMillis)
                         Log.v(tagName, "videoDuration: $duration")
@@ -499,10 +494,10 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                     val endPos = VideoUtils.secToTime(endPosition.toLong())
                     Log.v(tagName, "startPos: $startPos, endPos: $endPos")
 
-                    val outputFile = OptiUtils.createVideoFile(context!!)
+                    val outputFile = OptiUtils.createVideoFile(requireContext())
                     Log.v(tagName, "outputFile: ${outputFile.absolutePath}")
 
-                    OptiVideoEditor.with(context!!)
+                    OptiVideoEditor.with(requireContext())
                         .setType(OptiConstant.VIDEO_TRIM)
                         .setFile(masterVideoFile!!)
                         .setOutputPath(outputFile.path)
@@ -524,7 +519,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                 val selectedImage = data.data
                 //  Log.e("selectedImage==>", "" + selectedImage)
                 val filePathColumn = arrayOf(MediaStore.MediaColumns.DATA)
-                val cursor = context!!.contentResolver
+                val cursor = requireContext().contentResolver
                     .query(selectedImage!!, filePathColumn, null, null, null)
                 if (cursor != null) {
                     cursor.moveToFirst()
@@ -538,7 +533,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
 
                         val extension = OptiCommonMethods.getFileExtension(masterVideoFile!!.absolutePath)
 
-                        val timeInMillis = OptiUtils.getVideoDuration(context!!, masterVideoFile!!)
+                        val timeInMillis = OptiUtils.getVideoDuration(requireContext(), masterVideoFile!!)
                         Log.v(tagName, "timeInMillis: $timeInMillis")
                         val duration = OptiCommonMethods.convertDurationInMin(timeInMillis)
                         Log.v(tagName, "videoDuration: $duration")
@@ -607,11 +602,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
             tvInfo!!.visibility= View.GONE
 
             ePlayer?.useController = true
-            exoPlayer = ExoPlayerFactory.newSimpleInstance(
-                activity,
-                DefaultRenderersFactory(activity),
-                DefaultTrackSelector(), DefaultLoadControl()
-            )
+            exoPlayer = SimpleExoPlayer.Builder(requireContext()).build()
 
             ePlayer?.player = exoPlayer
 
@@ -619,7 +610,8 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
 
             exoPlayer?.addListener(playerListener)
 
-            exoPlayer?.prepare(VideoUtils.buildMediaSource(Uri.fromFile(masterVideoFile), VideoFrom.LOCAL))
+            VideoUtils.buildMediaSource(Uri.fromFile(masterVideoFile), VideoFrom.LOCAL)
+                ?.let { exoPlayer?.prepare(it) }
 
             exoPlayer?.seekTo(0)
 
@@ -629,26 +621,17 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
         }
     }
 
-    private val playerListener = object : Player.EventListener {
-        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) {
-        }
+    private val playerListener = object : Listener {
 
-        override fun onSeekProcessed() {
-        }
 
-        override fun onTracksChanged(trackGroups: TrackGroupArray?, trackSelections: TrackSelectionArray?) {
-        }
-
-        override fun onPlayerError(error: ExoPlaybackException?) {
-            Log.v(tagName, "onPlayerError: ${error.toString()}")
-            Toast.makeText(mContext, "Video format is not supported", Toast.LENGTH_LONG).show()
-        }
 
         override fun onLoadingChanged(isLoading: Boolean) {
             pbLoading?.visibility = if (isLoading) View.VISIBLE else View.GONE
         }
 
         override fun onPositionDiscontinuity(reason: Int) {
+            Toast.makeText(mContext, "Video format is not supported", Toast.LENGTH_LONG).show()
+
         }
 
         override fun onRepeatModeChanged(repeatMode: Int) {
@@ -657,9 +640,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
         }
 
-        override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
 
-        }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
 
@@ -676,15 +657,15 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
 
     private fun convertAviToMp4() {
 
-        AlertDialog.Builder(context!!)
+        AlertDialog.Builder(requireContext())
             .setTitle(OptiConstant.APP_NAME)
             .setMessage(getString(R.string.not_supported_video))
             .setPositiveButton(getString(R.string.yes)) { dialog, which ->
                 //output file is generated and send to video processing
-                val outputFile = OptiUtils.createVideoFile(context!!)
+                val outputFile = OptiUtils.createVideoFile(requireContext())
                 Log.v(tagName, "outputFile: ${outputFile.absolutePath}")
 
-                OptiVideoEditor.with(context!!)
+                OptiVideoEditor.with(requireContext())
                     .setType(OptiConstant.CONVERT_AVI_TO_MP4)
                     .setFile(masterVideoFile!!)
                     .setOutputPath(outputFile.path)
@@ -735,7 +716,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                             ) == PackageManager.PERMISSION_GRANTED
                         ) {
                             //call the gallery intent
-                            OptiUtils.refreshGalleryAlone(context!!)
+                            OptiUtils.refreshGalleryAlone(requireContext())
                             val i = Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
                             i.type = "video/*"
                             i.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("video/*"))
@@ -759,7 +740,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                             ) == PackageManager.PERMISSION_GRANTED
                         ) {
                             //call the gallery intent
-                            OptiUtils.refreshGalleryAlone(context!!)
+                            OptiUtils.refreshGalleryAlone(requireContext())
                             val i = Intent(Intent.ACTION_PICK, MediaStore.Audio.Media.EXTERNAL_CONTENT_URI)
                             i.type = "video/*"
                             i.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("video/*"))
@@ -779,16 +760,16 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                         break
                     } else {
                         if (ActivityCompat.checkSelfPermission(
-                                context!!,
+                                requireContext(),
                                 permission
                             ) == PackageManager.PERMISSION_GRANTED
                         ) {
                             //call the camera intent
                             val cameraIntent = Intent(MediaStore.ACTION_VIDEO_CAPTURE)
-                            videoFile = OptiUtils.createVideoFile(context!!)
+                            videoFile = OptiUtils.createVideoFile(requireContext())
                             Log.v(tagName, "videoPath1: " + videoFile!!.absolutePath)
                             videoUri = FileProvider.getUriForFile(
-                                context!!,
+                                requireContext(),
                                 "com.obs.marveleditor.provider", videoFile!!
                             )
                             cameraIntent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 240) //4 minutes
@@ -810,7 +791,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                         break
                     } else {
                         if (ActivityCompat.checkSelfPermission(
-                                context!!,
+                                requireContext(),
                                 permission
                             ) == PackageManager.PERMISSION_GRANTED
                         ) {
@@ -828,7 +809,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
     private fun callPermissionSettings() {
         val intent = Intent()
         intent.action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-        val uri = Uri.fromParts("package", context!!.applicationContext.packageName, null)
+        val uri = Uri.fromParts("package", requireContext().applicationContext.packageName, null)
         intent.data = uri
         startActivityForResult(intent, 300)
     }
@@ -849,7 +830,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
     private fun showBottomSheetDialogFragment(bottomSheetDialogFragment: BottomSheetDialogFragment) {
         val bundle = Bundle()
         bottomSheetDialogFragment.arguments = bundle
-        bottomSheetDialogFragment.show(fragmentManager, bottomSheetDialogFragment.tag)
+        bottomSheetDialogFragment.show(childFragmentManager, bottomSheetDialogFragment.tag)
     }
 
     override fun videoOption(option: String) {
@@ -865,7 +846,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
 
                 if (masterVideoFile == null) {
                     OptiUtils.showGlideToast(
-                        activity!!,
+                        requireActivity(),
                         getString(R.string.error_filter)
                     )
                 }
@@ -881,7 +862,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
 
                 if (masterVideoFile == null) {
                     OptiUtils.showGlideToast(
-                        activity!!,
+                       requireActivity(),
                         getString(R.string.error_crop)
                     )
                 }
@@ -891,7 +872,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                 masterVideoFile?.let { file ->
                     releasePlayer()
 
-                    val timeInMillis = OptiUtils.getVideoDuration(context!!, file)
+                    val timeInMillis = OptiUtils.getVideoDuration(requireContext(), file)
                     /*val duration = OptiCommonMethods.convertDurationInSec(timeInMillis)
                     Log.v(tagName, "videoDuration: $duration")*/
 
@@ -899,12 +880,12 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                         setHelper(this@OptiMasterProcessorFragment)
                         setFilePathFromSource(file)
                         setDuration(timeInMillis)
-                    }.show(fragmentManager, "OptiAddMusicFragment")
+                    }.show(childFragmentManager, "OptiAddMusicFragment")
                 }
 
                 if (masterVideoFile == null) {
                     OptiUtils.showGlideToast(
-                        activity!!,
+                        requireActivity(),
                         getString(R.string.error_music)
                     )
                 }
@@ -919,12 +900,12 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
                     OptiPlaybackSpeedDialogFragment.newInstance().apply {
                         setHelper(this@OptiMasterProcessorFragment)
                         setFilePathFromSource(file)
-                    }.show(fragmentManager, "OptiPlaybackSpeedDialogFragment")
+                    }.show(childFragmentManager, "OptiPlaybackSpeedDialogFragment")
                 }
 
                 if (masterVideoFile == null) {
                     OptiUtils.showGlideToast(
-                        activity!!,
+                        requireActivity(),
                         getString(R.string.error_speed)
                     )
                 }
@@ -940,7 +921,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
 
                 if (masterVideoFile == null) {
                     OptiUtils.showGlideToast(
-                        activity!!,
+                        requireActivity(),
                         getString(R.string.error_text)
                     )
                 }
@@ -956,7 +937,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
 
                 if (masterVideoFile == null) {
                     OptiUtils.showGlideToast(
-                        activity!!,
+                        requireActivity(),
                         getString(R.string.error_sticker)
                     )
                 }
@@ -965,7 +946,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
             OptiConstant.MERGE -> {
                 OptiMergeFragment.newInstance().apply {
                     setHelper(this@OptiMasterProcessorFragment)
-                }.show(fragmentManager, "OptiMergeFragment")
+                }.show(childFragmentManager, "OptiMergeFragment")
             }
 
             OptiConstant.TRANSITION -> {
@@ -978,7 +959,7 @@ class OptiMasterProcessorFragment : Fragment(), OptiBaseCreatorDialogFragment.Ca
 
                 if (masterVideoFile == null) {
                     OptiUtils.showGlideToast(
-                        activity!!,
+                        requireActivity(),
                         getString(R.string.error_transition)
                     )
                 }
